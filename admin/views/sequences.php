@@ -1,6 +1,6 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <div class="wrap ms-wrap">
-	<h1>📧 シーケンス</h1>
+	<h1><span class="dashicons dashicons-email-alt ms-h1-icon" aria-hidden="true"></span>シーケンス</h1>
 
 	<?php if ( isset( $_GET['saved'] ) ) : ?>
 		<div class="notice notice-success is-dismissible"><p>保存しました。</p></div>
@@ -149,5 +149,5 @@
 		</p>
 	</form>
 
-	<p class="ms-muted">💡 登録フォームの設置: 固定ページやLPに <code>[mailsamurai_form sequence="<?php echo (int) $sequence_id; ?>" source="LP名" button="無料で受け取る"]</code> を貼り付けてください。<code>name="no"</code> で名前欄を省略できます(入力項目削減はCVRを大きく改善します)。</p>
+	<p class="ms-muted">登録フォームの設置：<a href="<?php echo esc_url( admin_url( 'admin.php?page=ms-form&sequence_id=' . (int) $sequence_id ) ); ?>">「登録フォーム」画面</a>でショートコードを作ってコピーし、固定ページやLPに貼り付けてください。</p>
 </div>

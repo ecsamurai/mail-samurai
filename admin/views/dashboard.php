@@ -1,6 +1,6 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <div class="wrap ms-wrap">
-	<h1>📧 メール侍 ダッシュボード</h1>
+	<h1><span class="dashicons dashicons-email-alt ms-h1-icon" aria-hidden="true"></span>メール侍 ダッシュボード</h1>
 
 	<form method="get" class="ms-filter">
 		<input type="hidden" name="page" value="ms-dashboard">
@@ -51,7 +51,7 @@
 		</thead>
 		<tbody>
 		<?php if ( empty( $report ) ) : ?>
-			<tr><td colspan="8">まだステップがありません。「シーケンス」画面から作成してください。</td></tr>
+			<tr><td colspan="8">まだステップがありません。「シーケンス」画面から作成してください。登録フォームは<a href="<?php echo esc_url( admin_url( 'admin.php?page=ms-form' ) ); ?>">「登録フォーム」画面</a>で作れます。</td></tr>
 		<?php endif; ?>
 		<?php foreach ( $report as $r ) : ?>
 			<tr class="<?php echo $r['warn'] ? 'ms-row-warn' : ''; ?>">

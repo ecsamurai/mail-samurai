@@ -1,6 +1,6 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <div class="wrap ms-wrap">
-	<h1>📧 購読者(全 <?php echo (int) $total; ?> 件)</h1>
+	<h1><span class="dashicons dashicons-email-alt ms-h1-icon" aria-hidden="true"></span>購読者(全 <?php echo (int) $total; ?> 件)</h1>
 
 	<form method="get" class="ms-filter">
 		<input type="hidden" name="page" value="ms-subscribers">

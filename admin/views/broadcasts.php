@@ -1,6 +1,6 @@
 <?php if ( ! defined( 'ABSPATH' ) ) exit; ?>
 <div class="wrap ms-wrap">
-	<h1>📧 メルマガ</h1>
+	<h1><span class="dashicons dashicons-email-alt ms-h1-icon" aria-hidden="true"></span>メルマガ</h1>
 
 	<?php if ( isset( $_GET['queued'] ) ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php echo (int) $_GET['queued']; ?>名へのメルマガを送信キューに追加しました。既存のcronが5分ごとに、設定した送信上限の範囲で配信します。</p></div>

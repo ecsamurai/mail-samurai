@@ -23,6 +23,7 @@ class MS_Admin {
 		add_menu_page( 'メール侍', 'メール侍', 'manage_options', 'ms-dashboard', array( $this, 'page_dashboard' ), 'dashicons-email-alt', 26 );
 		add_submenu_page( 'ms-dashboard', 'ダッシュボード', 'ダッシュボード', 'manage_options', 'ms-dashboard', array( $this, 'page_dashboard' ) );
 		add_submenu_page( 'ms-dashboard', 'シーケンス', 'シーケンス', 'manage_options', 'ms-sequences', array( $this, 'page_sequences' ) );
+		add_submenu_page( 'ms-dashboard', '登録フォーム', '登録フォーム', 'manage_options', 'ms-form', array( $this, 'page_form' ) );
 		add_submenu_page( 'ms-dashboard', '購読者', '購読者', 'manage_options', 'ms-subscribers', array( $this, 'page_subscribers' ) );
 		add_submenu_page( 'ms-dashboard', 'メルマガ', 'メルマガ', 'manage_options', 'ms-broadcasts', array( $this, 'page_broadcasts' ) );
 		add_submenu_page( 'ms-dashboard', '設定', '設定', 'manage_options', 'ms-settings', array( $this, 'page_settings' ) );
@@ -43,6 +44,50 @@ class MS_Admin {
 		$kpi         = self::kpi_summary( $sequence_id, $days );
 		$report      = self::step_report( $sequence_id );
 		include MS_PLUGIN_DIR . 'admin/views/dashboard.php';
+	}
+
+	/**
+	 * 登録フォーム画面:ショートコードの作成・コピー・設置手順・プレビュー。
+	 */
+	public function page_form() {
+		$sequences   = MS_DB::get_sequences();
+		$sequence_id = isset( $_GET['sequence_id'] ) ? (int) $_GET['sequence_id'] : ( $sequences ? (int) $sequences[0]->id : 0 );
+		$fb_name     = ( isset( $_GET['name'] ) && 'yes' === $_GET['name'] ) ? 'yes' : 'no';
+		$fb_button   = isset( $_GET['button'] ) ? sanitize_text_field( wp_unslash( $_GET['button'] ) ) : '無料で受け取る';
+		$fb_button   = trim( str_replace( array( '"', '[', ']' ), '', $fb_button ) );
+		$fb_source   = isset( $_GET['source'] ) ? preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) wp_unslash( $_GET['source'] ) ) : '';
+
+		$shortcode = '[mailsamurai_form sequence="' . $sequence_id . '"';
+		if ( 'no' === $fb_name ) {
+			$shortcode .= ' name="no"';
+		}
+		if ( '' !== $fb_button ) {
+			$shortcode .= ' button="' . $fb_button . '"';
+		}
+		if ( '' !== $fb_source ) {
+			$shortcode .= ' source="' . $fb_source . '"';
+		}
+		$shortcode .= ']';
+
+		// 登録直後(offset=0)の稼働ステップがあるか
+		$has_day0 = false;
+		if ( $sequence_id ) {
+			foreach ( MS_DB::get_steps( $sequence_id ) as $st ) {
+				if ( 0 === (int) $st->send_offset && 'active' === $st->status ) {
+					$has_day0 = true;
+					break;
+				}
+			}
+		}
+
+		// プレビュー(送信できないようにする)
+		$preview_html = '';
+		if ( $sequence_id ) {
+			$preview_html = do_shortcode( $shortcode );
+			$preview_html = str_replace( '<form ', '<form onsubmit="return false;" ', $preview_html );
+		}
+
+		include MS_PLUGIN_DIR . 'admin/views/form.php';
 	}
 
 	public function page_sequences() {

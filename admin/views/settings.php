@@ -6,7 +6,7 @@ $cron_ok   = $last_cron && ( time() - $last_cron ) < 15 * MINUTE_IN_SECONDS;
 $cron_ago  = $last_cron ? human_time_diff( $last_cron, time() ) . '前' : 'まだ実行されていません';
 ?>
 <div class="wrap ms-wrap">
-	<h1>📧 メール侍 設定</h1>
+	<h1><span class="dashicons dashicons-email-alt ms-h1-icon" aria-hidden="true"></span>メール侍 設定</h1>
 
 	<?php if ( isset( $_GET['saved'] ) ) : ?>
 		<div class="notice notice-success is-dismissible"><p>設定を保存しました。</p></div>

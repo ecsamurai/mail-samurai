@@ -6,7 +6,7 @@
 		<div class="notice notice-error"><p>購読者が見つかりません。</p></div>
 	<?php else : ?>
 
-	<h1>📧 <?php echo esc_html( $subscriber->email ); ?></h1>
+	<h1><span class="dashicons dashicons-email-alt ms-h1-icon" aria-hidden="true"></span><?php echo esc_html( $subscriber->email ); ?></h1>
 	<p>
 		状態: <strong><?php echo 'subscribed' === $subscriber->status ? '購読中' : ( 'unsubscribed' === $subscriber->status ? '解除済み' : 'バウンス' ); ?></strong>
 		/ お名前: <?php echo $subscriber->name ? esc_html( $subscriber->name ) : '—'; ?>

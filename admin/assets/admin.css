@@ -65,3 +65,20 @@
 }
 .ms-cron-ok { background: #edf7ee; border-color: #2e7d32; color: #1e4620; }
 .ms-cron-ng { background: #fdecea; border-color: #c62828; color: #611a15; }
+
+/* 見出しアイコン(絵文字画像に依存しない) */
+.ms-h1-icon { font-size: 26px; width: 26px; height: 26px; margin-right: 6px; vertical-align: -3px; color: #2271b1; }
+
+/* 登録フォーム画面 */
+.ms-lead { font-size: 14px; margin: 0 0 16px; }
+.ms-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.ms-card { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 16px 20px; }
+.ms-card-title { font-size: 15px; margin: 4px 0 10px; }
+.ms-card .form-table th { width: 140px; padding: 12px 10px 12px 0; }
+.ms-shortcode-box { display: flex; gap: 8px; align-items: flex-start; }
+.ms-shortcode-box textarea { font-size: 13px; resize: none; }
+.ms-copy-msg { color: #2e7d32; min-height: 1.4em; margin: 6px 0 14px; }
+.ms-steps { margin: 0 0 12px 1.4em; }
+.ms-steps li { margin-bottom: 6px; }
+.ms-notice { margin: 8px 0 0 !important; }
+.ms-preview { max-width: 420px; padding: 16px; border: 1px dashed #c3c4c7; border-radius: 6px; background: #fafafa; }
