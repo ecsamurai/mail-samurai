@@ -11,6 +11,9 @@
 	<?php if ( isset( $_GET['test'] ) ) : ?>
 		<div class="notice <?php echo 'ok' === $_GET['test'] ? 'notice-success' : 'notice-error'; ?> is-dismissible">
 			<p><?php echo 'ok' === $_GET['test'] ? 'テストメールを送信しました。受信箱を確認してください(SMTPプラグイン未設定の場合は届きません)。' : 'テスト送信に失敗しました。SMTPプラグインの設定を確認してください。'; ?></p>
+			<?php $ms_err = get_option( 'ms_last_mail_error' ); if ( 'ok' !== $_GET['test'] && ! empty( $ms_err['message'] ) ) : ?>
+				<p>エラー内容：<code><?php echo esc_html( $ms_err['message'] ); ?></code></p>
+			<?php endif; ?>
 		</div>
 	<?php endif; ?>
 	<?php if ( isset( $_GET['deleted'] ) ) : ?>

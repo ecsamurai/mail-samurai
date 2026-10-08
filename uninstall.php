@@ -19,7 +19,7 @@ foreach ( $tables as $table ) {
 	$wpdb->query( "DROP TABLE IF EXISTS {$table}" );
 }
 
-$options = array( 'ms_from_name', 'ms_from_email', 'ms_batch_size', 'ms_track_open', 'ms_track_click', 'ms_last_cron', 'ms_db_version' );
+$options = array( 'ms_from_name', 'ms_from_email', 'ms_batch_size', 'ms_track_open', 'ms_track_click', 'ms_last_cron', 'ms_db_version', 'ms_last_mail_error' );
 foreach ( $options as $opt ) {
 	delete_option( $opt );
 }

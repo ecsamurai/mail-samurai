@@ -147,27 +147,18 @@ class MS_Sequence {
 			return new WP_Error( 'not_found', 'シーケンスが見つかりません。' );
 		}
 
-		$steps = (int) $wpdb->get_var( $wpdb->prepare(
-			'SELECT COUNT(*) FROM ' . MS_DB::steps() . ' WHERE sequence_id = %d', $sequence_id
-		) );
-		$subscribers = (int) $wpdb->get_var( $wpdb->prepare(
-			'SELECT COUNT(*) FROM ' . MS_DB::subscribers() . ' WHERE sequence_id = %d', $sequence_id
-		) );
-		$deliveries = (int) $wpdb->get_var( $wpdb->prepare(
-			'SELECT COUNT(*) FROM ' . MS_DB::deliveries() . ' d INNER JOIN ' . MS_DB::steps() . ' st ON st.id = d.step_id WHERE st.sequence_id = %d', $sequence_id
-		) );
-		$broadcasts = (int) $wpdb->get_var( $wpdb->prepare(
-			'SELECT COUNT(*) FROM ' . MS_DB::broadcasts() . ' WHERE sequence_id = %d', $sequence_id
-		) );
-
-		if ( $steps || $subscribers || $deliveries || $broadcasts ) {
-			return new WP_Error( 'not_empty', 'ステップ・購読者・配信履歴・メルマガ履歴のあるシーケンスは削除できません。' );
+		if ( ! self::is_empty( $sequence_id ) ) {
+			return new WP_Error( 'not_empty', 'ステップ・購読者・メルマガ履歴のあるシーケンスは削除できません。' );
 		}
 
 		$wpdb->delete( MS_DB::sequences(), array( 'id' => $sequence_id ) );
 		return true;
 	}
 
+	/**
+	 * ステップ・購読者・メルマガが1件もないか。
+	 * 配信履歴は必ずステップに紐づくので、ステップが0件なら配信履歴も0件。
+	 */
 	public static function is_empty( $sequence_id ) {
 		global $wpdb;
 		$steps = (int) $wpdb->get_var( $wpdb->prepare(

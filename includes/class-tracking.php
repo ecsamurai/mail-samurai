@@ -53,7 +53,9 @@ class MS_Tracking {
 		return preg_replace_callback(
 			'/href=["\']([^"\']+)["\']/i',
 			function ( $m ) use ( $track_token, $unsub_url ) {
-				$url = $m[1];
+				// href属性の値はHTMLエンティティ化されている(例: & → &amp;)。
+				// 署名・転送先には実際のURLを使う(そのままだと ?a=1&amp;b=2 に飛んでしまう)。
+				$url = html_entity_decode( $m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 
 				// 解除リンク・アンカー・mailto はそのまま
 				if ( $url === $unsub_url || 0 === strpos( $url, '#' ) || 0 === strpos( $url, 'mailto:' ) ) {
@@ -102,61 +104,44 @@ class MS_Tracking {
 		return ob_get_clean();
 	}
 
-	/** 開封記録(初回のみ) */
+	/** 開封記録(初回のみ)。ステップメールと一斉メールのどちらのトークンでも受け付ける。 */
 	public static function record_open( $token ) {
-		global $wpdb;
-		$d = MS_DB::get_delivery_by_token( $token );
-		if ( $d ) {
-			if ( null === $d->opened_at ) {
-				$wpdb->update( MS_DB::deliveries(), array(
-					'opened_at' => current_time( 'mysql' ),
-				), array( 'id' => $d->id ) );
-			}
-			return;
-		}
-
-		// 単発メルマガの開封記録。
-		$r = MS_DB::get_broadcast_recipient_by_token( $token );
-		if ( $r && null === $r->opened_at ) {
-			$wpdb->update( MS_DB::broadcast_recipients(), array(
-				'opened_at' => current_time( 'mysql' ),
-			), array( 'id' => $r->id ) );
-		}
+		self::record( $token, null );
 	}
 
-	/** クリック記録(初回のみ)。開封漏れの補完も行う(クリック=確実に開封している) */
+	/** クリック記録(初回のみ)。クリック=確実に開封しているので、開封漏れも補完する。 */
 	public static function record_click( $token, $url ) {
+		self::record( $token, $url );
+	}
+
+	/**
+	 * 開封・クリックの記録本体。$url が null なら開封のみ。
+	 * トークンはまずステップメール、なければ一斉メールの送信記録から探す。
+	 */
+	private static function record( $token, $url ) {
 		global $wpdb;
-		$d = MS_DB::get_delivery_by_token( $token );
-		if ( $d ) {
-			$update = array();
-			if ( null === $d->clicked_at ) {
-				$update['clicked_at']  = current_time( 'mysql' );
-				$update['clicked_url'] = esc_url_raw( substr( $url, 0, 500 ) );
-			}
-			if ( null === $d->opened_at ) {
-				$update['opened_at'] = current_time( 'mysql' );
-			}
-			if ( $update ) {
-				$wpdb->update( MS_DB::deliveries(), $update, array( 'id' => $d->id ) );
-			}
+
+		$row   = MS_DB::get_delivery_by_token( $token );
+		$table = MS_DB::deliveries();
+		if ( ! $row ) {
+			$row   = MS_DB::get_broadcast_recipient_by_token( $token );
+			$table = MS_DB::broadcast_recipients();
+		}
+		if ( ! $row ) {
 			return;
 		}
 
-		// 単発メルマガのクリック記録。クリックは開封も兼ねる。
-		$r = MS_DB::get_broadcast_recipient_by_token( $token );
-		if ( $r ) {
-			$update = array();
-			if ( null === $r->clicked_at ) {
-				$update['clicked_at']  = current_time( 'mysql' );
-				$update['clicked_url'] = esc_url_raw( substr( $url, 0, 500 ) );
-			}
-			if ( null === $r->opened_at ) {
-				$update['opened_at'] = current_time( 'mysql' );
-			}
-			if ( $update ) {
-				$wpdb->update( MS_DB::broadcast_recipients(), $update, array( 'id' => $r->id ) );
-			}
+		$now    = current_time( 'mysql' );
+		$update = array();
+		if ( null === $row->opened_at ) {
+			$update['opened_at'] = $now;
+		}
+		if ( null !== $url && null === $row->clicked_at ) {
+			$update['clicked_at']  = $now;
+			$update['clicked_url'] = esc_url_raw( substr( $url, 0, 500 ) );
+		}
+		if ( $update ) {
+			$wpdb->update( $table, $update, array( 'id' => $row->id ) );
 		}
 	}
 }

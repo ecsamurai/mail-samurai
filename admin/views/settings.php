@@ -20,6 +20,14 @@ $cron_ago  = $last_cron ? human_time_diff( $last_cron, time() ) . '前' : 'ま�
 		<?php endif; ?>
 	</div>
 
+	<?php $ms_err = get_option( 'ms_last_mail_error' ); if ( ! empty( $ms_err['message'] ) ) : ?>
+		<div class="notice notice-error inline">
+			<p><strong>直近の送信エラー</strong>(<?php echo esc_html( $ms_err['time'] ); ?>)<br>
+			<code><?php echo esc_html( $ms_err['message'] ); ?></code><br>
+			SMTPプラグインの設定(ホスト・ポート・ユーザー名・パスワード)と、差出人アドレスを確認してください。</p>
+		</div>
+	<?php endif; ?>
+
 	<?php if ( ! defined( 'DISABLE_WP_CRON' ) || ! DISABLE_WP_CRON ) : ?>
 		<div class="notice notice-warning inline">
 			<p><strong>⚠ サーバーcron推奨設定(未設定)</strong><br>

@@ -29,7 +29,9 @@ class MS_Endpoints {
 				exit;
 
 			case 'click':
-				$url = isset( $_GET['url'] ) ? rawurldecode( (string) $_GET['url'] ) : '';
+				// $_GET は既にURLデコード済み。再デコードすると %E3%81%82 のような
+				// 日本語URLが壊れて署名が一致しなくなるため、そのまま使う。
+				$url = isset( $_GET['url'] ) ? wp_unslash( (string) $_GET['url'] ) : '';
 				$sig = isset( $_GET['sig'] ) ? sanitize_key( $_GET['sig'] ) : '';
 
 				// オープンリダイレクト対策:
@@ -41,6 +43,9 @@ class MS_Endpoints {
 					&& in_array( $parsed['scheme'], array( 'http', 'https' ), true );
 
 				if ( $valid ) {
+					// v1.4.0以前に送ったメールのリンクは &amp; を含んだまま署名されているため、
+					// 転送時にエンティティを戻す(新しいリンクでは何も変わらない)。
+					$url = html_entity_decode( $url, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 					MS_Tracking::record_click( $token, $url );
 				} else {
 					$url = home_url( '/' );

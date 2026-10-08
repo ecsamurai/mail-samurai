@@ -73,7 +73,8 @@ class MS_Admin {
 		$has_day0 = false;
 		if ( $sequence_id ) {
 			foreach ( MS_DB::get_steps( $sequence_id ) as $st ) {
-				if ( 0 === (int) $st->send_offset && 'active' === $st->status ) {
+				// 時刻指定(例: 8:00)があると「登録直後」ではなく次のその時刻になる
+				if ( 0 === (int) $st->send_offset && 'active' === $st->status && ( null === $st->send_hour || '' === $st->send_hour ) ) {
 					$has_day0 = true;
 					break;
 				}

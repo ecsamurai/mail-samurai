@@ -11,10 +11,7 @@ class MS_Sender {
 	 *
 	 * $only_subscriber_id を指定すると、その購読者の分だけを処理する
 	 * (登録直後のDay0即時送信用。訪問者のリクエスト中に全キューを回さない)。
-	 *
-	 * 二重送信対策:送信前に status を pending → sending へ原子的に更新して
-	 * 行を「クレーム」する。cronと登録時実行が同時に走っても、
-	 * 同じ行を掴めるのは片方だけになる。
+	 * 二重送信対策は deliver_rows() を参照。
 	 */
 	public static function process_queue( $only_subscriber_id = 0 ) {
 		global $wpdb;
@@ -32,20 +29,7 @@ class MS_Sender {
 		$t_step = MS_DB::steps();
 		$t_seq  = MS_DB::sequences();
 
-		// 復旧:送信中のままプロセスが落ちた行(15分以上放置)をpendingへ戻す
-		$wpdb->query( $wpdb->prepare(
-			"UPDATE {$t_del} SET status = 'pending', claimed_at = NULL
-			 WHERE status = 'sending' AND claimed_at IS NOT NULL AND claimed_at < %s",
-			date( 'Y-m-d H:i:s', strtotime( $now ) - 15 * MINUTE_IN_SECONDS )
-		) );
-
-		// 掃除:解除・バウンス済み購読者の未送信予約をskippedへ
-		// (バッチ枠を消費させないため、SELECT前にまとめて処理)
-		$wpdb->query(
-			"UPDATE {$t_del} d INNER JOIN {$t_sub} s ON s.id = d.subscriber_id
-			 SET d.status = 'skipped'
-			 WHERE d.status = 'pending' AND s.status != 'subscribed'"
-		);
+		self::recover_and_skip( $t_del );
 
 		// 抽出条件をWHERE句で完結させる。
 		// 下書きステップ・停止中シーケンスの予約はpendingのまま「選ばれない」
@@ -74,40 +58,7 @@ class MS_Sender {
 
 		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $args ) );
 
-		foreach ( $rows as $row ) {
-
-			// 行をクレーム(掴めなければ他プロセスが処理中なのでスキップ)
-			$claimed = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t_del} SET status = 'sending', claimed_at = %s
-				 WHERE id = %d AND status = 'pending'",
-				current_time( 'mysql' ), $row->delivery_id
-			) );
-			if ( ! $claimed ) {
-				continue;
-			}
-
-			$sent = self::send_mail( $row->email, $row->subject, $row->body_html, array(
-				'name'        => $row->name,
-				'sub_token'   => $row->sub_token,
-				'track_token' => $row->track_token,
-			) );
-
-			if ( $sent ) {
-				$wpdb->update( MS_DB::deliveries(), array(
-					'status'     => 'sent',
-					'sent_at'    => current_time( 'mysql' ),
-					'claimed_at' => null,
-				), array( 'id' => $row->delivery_id ) );
-			} else {
-				$attempts = (int) $row->attempts + 1;
-				$update   = array(
-					'attempts'   => $attempts,
-					'claimed_at' => null,
-					'status'     => ( $attempts >= self::MAX_ATTEMPTS ) ? 'failed' : 'pending',
-				);
-				$wpdb->update( MS_DB::deliveries(), $update, array( 'id' => $row->delivery_id ) );
-			}
-		}
+		self::deliver_rows( $t_del, $rows, 'delivery_id' );
 
 		// 一斉メールも同じ送信上限を共有する。Day0の即時送信では扱わない。
 		if ( ! $only_subscriber_id ) {
@@ -128,16 +79,7 @@ class MS_Sender {
 		$t_sub = MS_DB::subscribers();
 		$now   = current_time( 'mysql' );
 
-		// 処理途中で落ちた送信を復旧し、解除・バウンス済みの人は送らない。
-		$wpdb->query( $wpdb->prepare(
-			"UPDATE {$t_rec} SET status = 'pending', claimed_at = NULL
-			 WHERE status = 'sending' AND claimed_at IS NOT NULL AND claimed_at < %s",
-			date( 'Y-m-d H:i:s', strtotime( $now ) - 15 * MINUTE_IN_SECONDS )
-		) );
-		$wpdb->query(
-			"UPDATE {$t_rec} r INNER JOIN {$t_sub} s ON s.id = r.subscriber_id
-			 SET r.status = 'skipped' WHERE r.status = 'pending' AND s.status != 'subscribed'"
-		);
+		self::recover_and_skip( $t_rec );
 
 		$rows = $wpdb->get_results( $wpdb->prepare(
 			"SELECT r.id AS recipient_id, r.attempts, r.track_token, b.id AS broadcast_id, b.subject, b.body_html,
@@ -150,37 +92,7 @@ class MS_Sender {
 			$limit
 		) );
 
-		foreach ( $rows as $row ) {
-			$claimed = $wpdb->query( $wpdb->prepare(
-				"UPDATE {$t_rec} SET status = 'sending', claimed_at = %s WHERE id = %d AND status = 'pending'",
-				current_time( 'mysql' ), $row->recipient_id
-			) );
-			if ( ! $claimed ) {
-				continue;
-			}
-
-			$sent = self::send_mail( $row->email, $row->subject, $row->body_html, array(
-				'name'        => $row->name,
-				'sub_token'   => $row->sub_token,
-				'track_token' => $row->track_token,
-			) );
-
-			if ( $sent ) {
-				$wpdb->update( $t_rec, array(
-					'status'     => 'sent',
-					'sent_at'    => current_time( 'mysql' ),
-					'claimed_at' => null,
-				), array( 'id' => $row->recipient_id ) );
-			} else {
-				$attempts = (int) $row->attempts + 1;
-				$wpdb->update( $t_rec, array(
-					'attempts'   => $attempts,
-					'claimed_at' => null,
-					'status'     => ( $attempts >= self::MAX_ATTEMPTS ) ? 'failed' : 'pending',
-				), array( 'id' => $row->recipient_id ) );
-			}
-		}
-
+		self::deliver_rows( $t_rec, $rows, 'recipient_id' );
 
 		// 解除などで全宛先がスキップされた場合も含め、未送信がなければ完了にする。
 		$wpdb->query( $wpdb->prepare(
@@ -192,6 +104,77 @@ class MS_Sender {
 			 )",
 			current_time( 'mysql' )
 		) );
+	}
+
+	/**
+	 * 送信キュー共通の前処理(ステップメール・一斉メールの両テーブルで使う)。
+	 * 1. 送信中のままプロセスが落ちた行(15分以上放置)を pending に戻す
+	 * 2. 解除・バウンス済み購読者の未送信分を skipped にする(バッチ枠を消費させない)
+	 */
+	private static function recover_and_skip( $table ) {
+		global $wpdb;
+		$t_sub = MS_DB::subscribers();
+		$wpdb->query( $wpdb->prepare(
+			"UPDATE {$table} SET status = 'pending', claimed_at = NULL
+			 WHERE status = 'sending' AND claimed_at IS NOT NULL AND claimed_at < %s",
+			date( 'Y-m-d H:i:s', strtotime( current_time( 'mysql' ) ) - 15 * MINUTE_IN_SECONDS )
+		) );
+		$wpdb->query(
+			"UPDATE {$table} q INNER JOIN {$t_sub} s ON s.id = q.subscriber_id
+			 SET q.status = 'skipped'
+			 WHERE q.status = 'pending' AND s.status != 'subscribed'"
+		);
+	}
+
+	/**
+	 * 抽出済みの行を1件ずつ「クレーム → 送信 → 結果記録」する。
+	 * 二重送信対策:送信前に status を pending → sending へ原子的に更新して行を掴む。
+	 * cronと登録時実行が同時に走っても、同じ行を掴めるのは片方だけ。
+	 * 失敗は MAX_ATTEMPTS 回まで再試行し、それを超えたら failed にする。
+	 */
+	private static function deliver_rows( $table, $rows, $id_field ) {
+		global $wpdb;
+		foreach ( $rows as $row ) {
+			$id      = (int) $row->$id_field;
+			$claimed = $wpdb->query( $wpdb->prepare(
+				"UPDATE {$table} SET status = 'sending', claimed_at = %s WHERE id = %d AND status = 'pending'",
+				current_time( 'mysql' ), $id
+			) );
+			if ( ! $claimed ) {
+				continue; // 他プロセスが処理中
+			}
+
+			$sent = self::send_mail( $row->email, $row->subject, $row->body_html, array(
+				'name'        => $row->name,
+				'sub_token'   => $row->sub_token,
+				'track_token' => $row->track_token,
+			) );
+
+			if ( $sent ) {
+				$update = array( 'status' => 'sent', 'sent_at' => current_time( 'mysql' ), 'claimed_at' => null );
+			} else {
+				$attempts = (int) $row->attempts + 1;
+				$update   = array(
+					'attempts'   => $attempts,
+					'claimed_at' => null,
+					'status'     => ( $attempts >= self::MAX_ATTEMPTS ) ? 'failed' : 'pending',
+				);
+			}
+			$wpdb->update( $table, $update, array( 'id' => $id ) );
+		}
+	}
+
+	/**
+	 * 送信失敗の理由を記録する(wp_mail は false を返すだけで理由を教えてくれないため)。
+	 * メール侍が送っている間だけ wp_mail_failed を聞くので、他プラグインの失敗は混ざらない。
+	 * 設定画面とテスト送信の結果表示で使う。
+	 */
+	public static function capture_failure( $error ) {
+		$message = is_wp_error( $error ) ? $error->get_error_message() : '不明なエラー';
+		update_option( 'ms_last_mail_error', array(
+			'time'    => current_time( 'mysql' ),
+			'message' => wp_strip_all_tags( $message ),
+		), false );
 	}
 
 	/**
@@ -208,7 +191,10 @@ class MS_Sender {
 		$headers[] = 'Content-Type: text/html; charset=UTF-8';
 		$headers[] = sprintf( 'From: %s <%s>', $from_name, $from_email );
 
-		return wp_mail( $to, $subject, $body, $headers );
+		add_action( 'wp_mail_failed', array( __CLASS__, 'capture_failure' ) );
+		$sent = wp_mail( $to, $subject, $body, $headers );
+		remove_action( 'wp_mail_failed', array( __CLASS__, 'capture_failure' ) );
+		return $sent;
 	}
 
 	/**
