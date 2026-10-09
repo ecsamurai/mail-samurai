@@ -24,4 +24,7 @@ foreach ( $options as $opt ) {
 	delete_option( $opt );
 }
 
+delete_metadata( 'user', 0, 'ms_broadcast_draft', '', true );
+delete_metadata( 'user', 0, 'ms_test_email', '', true );
+
 wp_clear_scheduled_hook( 'ms_process_queue' );

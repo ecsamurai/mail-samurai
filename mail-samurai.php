@@ -3,7 +3,7 @@
  * Plugin Name: メール侍 (Mail Samurai)
  * Plugin URI: https://github.com/ecsamurai/mail-samurai
  * Description: 自前インフラで動くステップメール/メルマガ配信プラグイン。登録日起点の個別タイムライン配信・開封/クリックトラッキング・ファネルレポート搭載。送信経路はWP Mail SMTP等のSMTPプラグインに委譲します。
- * Version: 1.4.1
+ * Version: 1.5.0
  * Author: ecさむらい
  * Author URI: https://ecsamurai.com
  * Text Domain: mail-samurai
@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MS_VERSION', '1.4.1' );
+define( 'MS_VERSION', '1.5.0' );
 define( 'MS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 

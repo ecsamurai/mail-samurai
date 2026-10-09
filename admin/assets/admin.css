@@ -82,3 +82,9 @@
 .ms-steps li { margin-bottom: 6px; }
 .ms-notice { margin: 8px 0 0 !important; }
 .ms-preview { max-width: 420px; padding: 16px; border: 1px dashed #c3c4c7; border-radius: 6px; background: #fafafa; }
+
+/* メルマガ:送信前の確認 */
+.ms-test-box { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; padding: 12px 18px; margin: 8px 0 16px; max-width: 900px; }
+.ms-test-box h3 { margin: 6px 0 4px; font-size: 14px; }
+.ms-test-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ms-test-row label { font-weight: 600; }

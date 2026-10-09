@@ -6,6 +6,13 @@ class MS_Sender {
 	const MAX_ATTEMPTS = 3;
 
 	/**
+	 * テスト送信・プレビュー用の購読者トークン。
+	 * 実在しない値なので、テストメールの解除リンクを押しても誰も解除されず、
+	 * 「テスト用の解除リンクです」という案内ページが表示される。
+	 */
+	const TEST_TOKEN = '00000000000000000000000000000000';
+
+	/**
 	 * cronから5分おきに呼ばれるキュー処理。
 	 * 1回の実行で最大 batch_size 通を送る(50通×5分間隔=600通/時。Xserverの1,500通/時制限内)。
 	 *
@@ -198,17 +205,34 @@ class MS_Sender {
 	}
 
 	/**
-	 * テスト送信:トラッキングなし・ダミー差し込みで指定アドレスへ即送信。
+	 * テスト送信・プレビューで使う差し込み内容。
+	 * 計測(開封・クリック)はしないので、本文のリンクはそのまま本来のURLに飛ぶ。
 	 */
+	private static function test_context() {
+		return array(
+			'name'        => 'テスト太郎',
+			'sub_token'   => self::TEST_TOKEN,
+			'track_token' => null,
+		);
+	}
+
+	/** ステップのテスト送信(自分宛)。 */
 	public static function test_send( $step_id, $to ) {
 		$step = MS_DB::get_step( $step_id );
 		if ( ! $step ) {
 			return false;
 		}
-		return self::send_mail( $to, '【テスト】' . $step->subject, $step->body_html, array(
-			'name'        => 'テスト太郎',
-			'sub_token'   => 'test',
-			'track_token' => null, // トラッキング無効
-		) );
+		return self::send_test( $to, $step->subject, $step->body_html );
+	}
+
+	/** 件名・本文を指定してテスト送信する(メルマガの送信前確認など)。 */
+	public static function send_test( $to, $subject, $body_html ) {
+		return self::send_mail( $to, '【テスト】' . $subject, wp_kses_post( $body_html ), self::test_context() );
+	}
+
+	/** 実際に届くメールと同じ見た目のHTMLを返す(プレビュー画面用)。 */
+	public static function render_preview( $subject, $body_html ) {
+		$html = MS_Tracking::prepare_body( wp_kses_post( $body_html ), self::test_context() );
+		return str_replace( '<head>', '<head><title>' . esc_html( $subject ) . '(プレビュー)</title>', $html );
 	}
 }

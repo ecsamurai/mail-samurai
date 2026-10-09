@@ -5,6 +5,16 @@
 	<?php if ( isset( $_GET['queued'] ) ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php echo (int) $_GET['queued']; ?>名へのメルマガを送信キューに追加しました。既存のcronが5分ごとに、設定した送信上限の範囲で配信します。</p></div>
 	<?php endif; ?>
+	<?php if ( isset( $_GET['test'] ) ) : ?>
+		<?php if ( 'ok' === $_GET['test'] ) : ?>
+			<div class="notice notice-success is-dismissible"><p>テストメールを <strong><?php echo esc_html( $test_email ); ?></strong> に送りました。見た目、商品などへのリンク、解除リンクを確認してください。(テストでは開封・クリックは計測しません)</p></div>
+		<?php elseif ( 'bademail' === $_GET['test'] ) : ?>
+			<div class="notice notice-error is-dismissible"><p>テスト送信先のメールアドレスが正しくありません。</p></div>
+		<?php else : ?>
+			<div class="notice notice-error is-dismissible"><p>テスト送信に失敗しました。SMTPプラグインの設定を確認してください。</p>
+			<?php $ms_err = get_option( 'ms_last_mail_error' ); if ( ! empty( $ms_err['message'] ) ) : ?><p>エラー内容：<code><?php echo esc_html( $ms_err['message'] ); ?></code></p><?php endif; ?></div>
+		<?php endif; ?>
+	<?php endif; ?>
 	<?php if ( isset( $_GET['error'] ) ) : ?>
 		<div class="notice notice-error is-dismissible"><p>メルマガを作成できませんでした。配信リストと件名を確認してください。</p></div>
 	<?php endif; ?>
@@ -22,21 +32,34 @@
 					<th><label for="ms-broadcast-sequence">配信リスト</label></th>
 					<td><select id="ms-broadcast-sequence" name="sequence_id">
 						<?php foreach ( $sequences as $sequence ) : ?>
-							<option value="<?php echo (int) $sequence->id; ?>"><?php echo esc_html( $sequence->name ); ?><?php echo 'paused' === $sequence->status ? ' (停止中)' : ''; ?></option>
+							<option value="<?php echo (int) $sequence->id; ?>" <?php selected( (int) $draft['sequence_id'], (int) $sequence->id ); ?>><?php echo esc_html( $sequence->name ); ?><?php echo 'paused' === $sequence->status ? ' (停止中)' : ''; ?></option>
 						<?php endforeach; ?>
 					</select></td>
 				</tr>
 				<tr>
 					<th><label for="ms-broadcast-subject">件名</label></th>
-					<td><input type="text" id="ms-broadcast-subject" name="subject" class="large-text" required></td>
+					<td><input type="text" id="ms-broadcast-subject" name="subject" class="large-text" required value="<?php echo esc_attr( $draft['subject'] ); ?>"></td>
 				</tr>
 				<tr>
 					<th>本文</th>
-					<td><?php wp_editor( '', 'ms_broadcast_body', array( 'textarea_name' => 'body_html', 'textarea_rows' => 16, 'media_buttons' => false ) ); ?>
+					<td><?php wp_editor( $draft['body_html'], 'ms_broadcast_body', array( 'textarea_name' => 'body_html', 'textarea_rows' => 16, 'media_buttons' => false ) ); ?>
 					<p class="description">差し込みタグ: <code>{name}</code> / <code>{unsubscribe_url}</code></p></td>
 				</tr>
 			</table>
-			<p><button class="button button-primary button-large" onclick="return confirm('現在購読中の全員へ送信キューを作成します。よろしいですか?');">この内容で送信する</button></p>
+			<div class="ms-test-box">
+				<h3>送る前に確認する</h3>
+				<p class="ms-muted">実際に届くメールと同じ見た目で確認できます。テストでは開封・クリックを計測せず、リンクはそのまま本来のページに飛びます。解除リンクを押しても誰も解除されません。</p>
+				<p>
+					<button type="submit" name="ms_mode" value="preview" class="button" formtarget="_blank">プレビューを見る(新しいタブ)</button>
+				</p>
+				<p class="ms-test-row">
+					<label for="ms-test-email">テスト送信先</label>
+					<input type="email" id="ms-test-email" name="ms_test_email" class="regular-text" value="<?php echo esc_attr( $test_email ); ?>">
+					<button type="submit" name="ms_mode" value="test" class="button">このアドレスにテスト送信</button>
+				</p>
+				<p class="ms-muted">入力した内容は下書きとして保存されるので、テスト送信のあとも消えません。</p>
+			</div>
+			<p><button type="submit" name="ms_mode" value="send" class="button button-primary button-large" onclick="return confirm('現在購読中の全員へ送信キューを作成します。よろしいですか?');">この内容で全員に送信する</button></p>
 		</form>
 	<?php endif; ?>
 

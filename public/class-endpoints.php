@@ -54,6 +54,13 @@ class MS_Endpoints {
 				exit;
 
 			case 'unsub':
+				if ( MS_Sender::TEST_TOKEN === $token ) {
+					wp_die(
+						'<div style="max-width:480px; margin:60px auto; font-family:sans-serif; line-height:1.9; text-align:center;"><h2>テスト送信の解除リンクです</h2><p>リンクは正しく動いています。実際に配信したメールでは、ここで配信が停止されます。(テストなので、誰の配信も停止していません)</p></div>',
+						'配信解除(テスト)',
+						array( 'response' => 200 )
+					);
+				}
 				$sub = MS_Subscriber::unsubscribe_by_token( $token );
 				$msg = $sub
 					? '<h2>配信を解除しました</h2><p>' . esc_html( $sub->email ) . ' 宛の配信を停止しました。これまでお読みいただきありがとうございました。</p>'

@@ -169,6 +169,10 @@ class MS_Admin {
 	public function page_broadcasts() {
 		$sequences  = MS_DB::get_sequences();
 		$broadcasts = MS_Broadcast::recent();
+		$draft      = get_user_meta( get_current_user_id(), 'ms_broadcast_draft', true );
+		$draft      = is_array( $draft ) ? $draft : array( 'sequence_id' => 0, 'subject' => '', 'body_html' => '' );
+		$test_email = get_user_meta( get_current_user_id(), 'ms_test_email', true );
+		$test_email = $test_email ? $test_email : wp_get_current_user()->user_email;
 		include MS_PLUGIN_DIR . 'admin/views/broadcasts.php';
 	}
 
@@ -377,19 +381,57 @@ class MS_Admin {
 		exit;
 	}
 
+	/**
+	 * メルマガ画面のフォーム。押したボタンで動作が変わる。
+	 * - preview:実際に届く見た目を新しいタブで表示
+	 * - test   :入力したアドレスにだけ送る(計測なし・解除リンクはテスト用)
+	 * - send   :購読中の全員へ送信キューを作る
+	 * プレビュー・テストのたびに内容を下書きとして保存し、画面に戻っても入力が消えないようにする。
+	 */
 	public function send_broadcast() {
 		$this->guard( 'ms_send_broadcast' );
-		$result = MS_Broadcast::create(
-			(int) $_POST['sequence_id'],
-			wp_unslash( $_POST['subject'] ),
-			wp_unslash( $_POST['body_html'] )
-		);
+
+		$mode        = isset( $_POST['ms_mode'] ) ? sanitize_key( $_POST['ms_mode'] ) : 'send';
+		$sequence_id = (int) $_POST['sequence_id'];
+		$subject     = sanitize_text_field( wp_unslash( $_POST['subject'] ) );
+		$body_html   = wp_kses_post( wp_unslash( $_POST['body_html'] ) );
+		$user_id     = get_current_user_id();
+
+		if ( 'preview' === $mode || 'test' === $mode ) {
+			update_user_meta( $user_id, 'ms_broadcast_draft', array(
+				'sequence_id' => $sequence_id,
+				'subject'     => $subject,
+				'body_html'   => $body_html,
+			) );
+		}
+
+		if ( 'preview' === $mode ) {
+			nocache_headers();
+			header( 'Content-Type: text/html; charset=UTF-8' );
+			echo MS_Sender::render_preview( $subject, $body_html ); // 管理者入力を wp_kses_post 済み
+			exit;
+		}
+
+		if ( 'test' === $mode ) {
+			$to = sanitize_email( wp_unslash( $_POST['ms_test_email'] ) );
+			if ( ! is_email( $to ) ) {
+				wp_safe_redirect( admin_url( 'admin.php?page=ms-broadcasts&test=bademail' ) );
+				exit;
+			}
+			update_user_meta( $user_id, 'ms_test_email', $to );
+			$ok = MS_Sender::send_test( $to, $subject, $body_html );
+			wp_safe_redirect( admin_url( 'admin.php?page=ms-broadcasts&test=' . ( $ok ? 'ok' : 'fail' ) ) );
+			exit;
+		}
+
+		$result = MS_Broadcast::create( $sequence_id, $subject, $body_html );
 
 		if ( is_wp_error( $result ) ) {
 			wp_safe_redirect( admin_url( 'admin.php?page=ms-broadcasts&error=' . $result->get_error_code() ) );
 			exit;
 		}
 
+		delete_user_meta( $user_id, 'ms_broadcast_draft' ); // 送信したら下書きは不要
 		wp_safe_redirect( admin_url( 'admin.php?page=ms-broadcasts&queued=' . (int) $result['recipients'] ) );
 		exit;
 	}
