@@ -57,12 +57,17 @@ class MS_Admin {
 		$fb_button   = trim( str_replace( array( '"', '[', ']' ), '', $fb_button ) );
 		$fb_source   = isset( $_GET['source'] ) ? preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) wp_unslash( $_GET['source'] ) ) : '';
 
+		$fb_color    = isset( $_GET['color'] ) ? MS_Form::sanitize_color( wp_unslash( $_GET['color'] ) ) : MS_Form::DEFAULT_COLOR;
+
 		$shortcode = '[mailsamurai_form sequence="' . $sequence_id . '"';
 		if ( 'no' === $fb_name ) {
 			$shortcode .= ' name="no"';
 		}
 		if ( '' !== $fb_button ) {
 			$shortcode .= ' button="' . $fb_button . '"';
+		}
+		if ( MS_Form::DEFAULT_COLOR !== $fb_color ) {
+			$shortcode .= ' color="' . $fb_color . '"';
 		}
 		if ( '' !== $fb_source ) {
 			$shortcode .= ' source="' . $fb_source . '"';

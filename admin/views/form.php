@@ -39,6 +39,14 @@
 						<td><input type="text" id="ms-fb-button" name="button" class="regular-text" value="<?php echo esc_attr( $fb_button ); ?>"></td>
 					</tr>
 					<tr>
+						<th scope="row"><label for="ms-fb-color">ボタンの色</label></th>
+						<td>
+							<input type="color" id="ms-fb-color" name="color" value="<?php echo esc_attr( $fb_color ); ?>" data-default="<?php echo esc_attr( MS_Form::DEFAULT_COLOR ); ?>">
+							<button type="button" class="button button-small" id="ms-fb-color-reset">緑に戻す</button>
+							<p class="description">文字色(白・黒)は背景色に合わせて自動で読みやすい方になります。</p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row"><label for="ms-fb-source">登録元の目印（任意）</label></th>
 						<td>
 							<input type="text" id="ms-fb-source" name="source" class="regular-text" value="<?php echo esc_attr( $fb_source ); ?>" placeholder="例：top / lp-a / blog">
@@ -92,7 +100,8 @@
 	var out  = document.getElementById('ms-fb-code');
 	var btn  = document.getElementById('ms-fb-copy');
 	var msg  = document.getElementById('ms-fb-copy-msg');
-	if (!form || !out || !btn) return;
+	var color = document.getElementById('ms-fb-color');
+	if (!form || !out || !btn || !color) return;
 
 	function clean(v) { return String(v).replace(/["\[\]]/g, '').trim(); }
 	function build() {
@@ -100,12 +109,26 @@
 		var name = (form.querySelector('[name="name"]:checked') || {}).value || 'no';
 		var b    = clean(form.querySelector('[name="button"]').value);
 		var src  = clean(form.querySelector('[name="source"]').value).replace(/[^A-Za-z0-9_\-]/g, '');
+		var col  = color.value.toLowerCase();
 		var code = '[mailsamurai_form sequence="' + seq + '"';
 		if (name === 'no') code += ' name="no"';
 		if (b) code += ' button="' + b + '"';
+		if (col !== color.dataset.default) code += ' color="' + col + '"';
 		if (src) code += ' source="' + src + '"';
 		out.value = code + ']';
+		paint(col);
 	}
+	// プレビューのボタン色をその場で変える(PHP側 MS_Form::text_color と同じ計算)
+	function paint(col) {
+		var pb = document.querySelector('.ms-preview .ms-form-button');
+		if (!pb || !/^#[0-9a-f]{6}$/.test(col)) return;
+		var r = parseInt(col.substr(1, 2), 16), g = parseInt(col.substr(3, 2), 16), b = parseInt(col.substr(5, 2), 16);
+		pb.style.background = col;
+		pb.style.color = ((r * 299 + g * 587 + b * 114) / 1000 > 160) ? '#111111' : '#ffffff';
+	}
+	document.getElementById('ms-fb-color-reset').addEventListener('click', function () {
+		color.value = color.dataset.default; build();
+	});
 	form.addEventListener('input', build);
 	form.addEventListener('change', build);
 

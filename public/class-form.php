@@ -3,9 +3,36 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
  * 登録フォーム。
- * 使い方: [mailsamurai_form sequence="1" source="lp-a" button="無料で受け取る"]
+ * 使い方: [mailsamurai_form sequence="1" source="lp-a" button="無料で受け取る" color="#16a34a"]
  */
 class MS_Form {
+
+	/** ボタンの標準色(緑)。 */
+	const DEFAULT_COLOR = '#16a34a';
+
+	/**
+	 * ボタン色を #rrggbb に正規化する。不正な値は標準色に戻す。
+	 */
+	public static function sanitize_color( $color ) {
+		$color = sanitize_hex_color( trim( (string) $color ) );
+		if ( ! $color ) {
+			return self::DEFAULT_COLOR;
+		}
+		if ( 4 === strlen( $color ) ) { // #abc → #aabbcc
+			$color = '#' . $color[1] . $color[1] . $color[2] . $color[2] . $color[3] . $color[3];
+		}
+		return strtolower( $color );
+	}
+
+	/**
+	 * 背景色に対して読みやすい文字色(白か黒)を返す。
+	 */
+	public static function text_color( $color ) {
+		$r = hexdec( substr( $color, 1, 2 ) );
+		$g = hexdec( substr( $color, 3, 2 ) );
+		$b = hexdec( substr( $color, 5, 2 ) );
+		return ( ( $r * 299 + $g * 587 + $b * 114 ) / 1000 > 160 ) ? '#111111' : '#ffffff';
+	}
 
 	public function __construct() {
 		add_shortcode( 'mailsamurai_form', array( $this, 'render' ) );
@@ -19,7 +46,9 @@ class MS_Form {
 			'source'   => '',
 			'button'   => '登録する',
 			'name'     => 'yes', // name="no" で名前欄を省略(入力項目削減=CVR約2倍の定石)
+			'color'    => self::DEFAULT_COLOR,
 		), $atts );
+		$bg = self::sanitize_color( $atts['color'] );
 
 		$result = isset( $_GET['ms_result'] ) ? sanitize_text_field( $_GET['ms_result'] ) : '';
 
@@ -55,8 +84,8 @@ class MS_Form {
 				<?php if ( 'no' !== $atts['name'] ) : ?>
 					<p><input type="text" name="ms_name" placeholder="お名前" style="width:100%; padding:12px;"></p>
 				<?php endif; ?>
-				<p><input type="email" name="ms_email" placeholder="メールアドレス" required style="width:100%; padding:12px;"></p>
-				<p><button type="submit" style="width:100%; padding:14px; cursor:pointer;"><?php echo esc_html( $atts['button'] ); ?></button></p>
+				<p><input type="email" name="ms_email" placeholder="メールアドレスを入力" required style="width:100%; padding:12px;"></p>
+				<p><button type="submit" class="ms-form-button" style="width:100%; padding:14px; cursor:pointer; border:0; border-radius:6px; font-weight:bold; background:<?php echo esc_attr( $bg ); ?>; color:<?php echo esc_attr( self::text_color( $bg ) ); ?>;"><?php echo esc_html( $atts['button'] ); ?></button></p>
 			</form>
 		</div>
 		<?php
