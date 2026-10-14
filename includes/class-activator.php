@@ -109,6 +109,23 @@ class MS_Activator {
 		dbDelta( $sql5 );
 		dbDelta( $sql6 );
 
+		// ⑦ 個別行動履歴。既存の配信・初回反応の記録は変更しない。
+		dbDelta( 'CREATE TABLE ' . MS_DB::activities() . " (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			subscriber_id BIGINT UNSIGNED NOT NULL,
+			event_type VARCHAR(24) NOT NULL,
+			mail_type VARCHAR(12) NOT NULL DEFAULT '',
+			mail_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			subject VARCHAR(255) NOT NULL DEFAULT '',
+			url TEXT NOT NULL,
+			actor_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY subscriber_time (subscriber_id, created_at, id),
+			KEY subscriber_event (subscriber_id, event_type, created_at, id),
+			KEY created_at (created_at)
+		) $charset;" );
+
 		// 既定オプション
 		add_option( 'ms_from_name', get_bloginfo( 'name' ) );
 		add_option( 'ms_from_email', get_option( 'admin_email' ) );
@@ -116,6 +133,7 @@ class MS_Activator {
 		add_option( 'ms_track_open', 1 );
 		add_option( 'ms_track_click', 1 );
 		add_option( 'ms_last_cron', 0 );
+		add_option( 'ms_activity_retention_days', 365 );
 
 		// 初期シーケンス(空)を1本作成
 		global $wpdb;
@@ -135,9 +153,13 @@ class MS_Activator {
 		if ( ! wp_next_scheduled( 'ms_process_queue' ) ) {
 			wp_schedule_event( time(), 'ms_five_minutes', 'ms_process_queue' );
 		}
+		if ( ! wp_next_scheduled( 'ms_cleanup_activities' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'ms_cleanup_activities' );
+		}
 	}
 
 	public static function deactivate() {
 		wp_clear_scheduled_hook( 'ms_process_queue' );
+		wp_clear_scheduled_hook( 'ms_cleanup_activities' );
 	}
 }

@@ -167,7 +167,10 @@ class MS_Sender {
 					'status'     => ( $attempts >= self::MAX_ATTEMPTS ) ? 'failed' : 'pending',
 				);
 			}
-			$wpdb->update( $table, $update, array( 'id' => $id ) );
+			$saved = $wpdb->update( $table, $update, array( 'id' => $id ) );
+			if ( $saved && ( $sent || 'failed' === $update['status'] ) ) {
+				MS_Activity::record_mail( MS_DB::deliveries() === $table ? 'sequence' : 'broadcast', $id, $sent ? 'sent' : 'failed' );
+			}
 		}
 	}
 

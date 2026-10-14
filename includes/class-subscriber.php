@@ -34,10 +34,16 @@ class MS_Subscriber {
 			// 解除済みの再登録は復活させる(タイマーはリセットしない=締切と同じ思想)。
 			// 解除時にskippedへ落とした予約のうち、配信時刻がまだ先のものだけpendingへ戻す。
 			// すでに過ぎた分は送らない(skippedのまま)。
-			$wpdb->update( MS_DB::subscribers(), array(
+			$changed = $wpdb->update( MS_DB::subscribers(), array(
 				'status'          => 'subscribed',
 				'unsubscribed_at' => null,
-			), array( 'id' => $existing->id ) );
+			), array( 'id' => $existing->id, 'status' => $existing->status ) );
+			if ( false === $changed ) {
+				return new WP_Error( 'db_error', '再登録処理に失敗しました。' );
+			}
+			if ( $changed ) {
+				MS_Activity::record( $existing->id, 'resubscribed' );
+			}
 			$wpdb->query( $wpdb->prepare(
 				'UPDATE ' . MS_DB::deliveries() .
 				" SET status = 'pending' WHERE subscriber_id = %d AND status = 'skipped' AND scheduled_at > %s",
@@ -61,6 +67,7 @@ class MS_Subscriber {
 			return new WP_Error( 'db_error', '登録処理に失敗しました。' );
 		}
 		$subscriber_id = (int) $wpdb->insert_id;
+		MS_Activity::record( $subscriber_id, 'subscribed' );
 
 		self::generate_deliveries( $subscriber_id, $sequence_id, $now );
 
@@ -110,21 +117,33 @@ class MS_Subscriber {
 	}
 
 	/** 解除(購読者トークン経由) */
-	public static function unsubscribe_by_token( $token ) {
+	public static function unsubscribe_by_token( $token, $origin = 'subscriber' ) {
 		global $wpdb;
 		$sub = MS_DB::get_subscriber_by_token( $token );
 		if ( ! $sub ) {
 			return false;
 		}
 		if ( 'unsubscribed' !== $sub->status ) {
-			$wpdb->update( MS_DB::subscribers(), array(
+			$changed = $wpdb->update( MS_DB::subscribers(), array(
 				'status'          => 'unsubscribed',
 				'unsubscribed_at' => current_time( 'mysql' ),
-			), array( 'id' => $sub->id ) );
+			), array( 'id' => $sub->id, 'status' => $sub->status ) );
+			if ( false === $changed ) {
+				return false;
+			}
+			if ( $changed ) {
+				MS_Activity::record( $sub->id, 'admin' === $origin ? 'admin_stopped' : 'unsubscribed', array(
+					'actor_id' => 'admin' === $origin ? get_current_user_id() : 0,
+				) );
+			}
 
 			// 未送信分をskippedへ(記録は消さない:仕様書4-4)
 			$wpdb->query( $wpdb->prepare(
 				'UPDATE ' . MS_DB::deliveries() . " SET status = 'skipped' WHERE subscriber_id = %d AND status = 'pending'",
+				$sub->id
+			) );
+			$wpdb->query( $wpdb->prepare(
+				'UPDATE ' . MS_DB::broadcast_recipients() . " SET status = 'skipped' WHERE subscriber_id = %d AND status = 'pending'",
 				$sub->id
 			) );
 		}
@@ -137,6 +156,6 @@ class MS_Subscriber {
 		if ( ! $sub ) {
 			return false;
 		}
-		return self::unsubscribe_by_token( $sub->token );
+		return self::unsubscribe_by_token( $sub->token, 'admin' );
 	}
 }

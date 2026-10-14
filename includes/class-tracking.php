@@ -104,13 +104,15 @@ class MS_Tracking {
 		return ob_get_clean();
 	}
 
-	/** 開封記録(初回のみ)。ステップメールと一斉メールのどちらのトークンでも受け付ける。 */
+	/** 各回の開封履歴と、集計用の初回開封を記録する。 */
 	public static function record_open( $token ) {
+		if ( ! get_option( 'ms_track_open', 1 ) ) return;
 		self::record( $token, null );
 	}
 
-	/** クリック記録(初回のみ)。クリック=確実に開封しているので、開封漏れも補完する。 */
+	/** 各回のクリック履歴を記録する。集計用の初回開封も補完する。 */
 	public static function record_click( $token, $url ) {
+		if ( ! get_option( 'ms_track_click', 1 ) ) return;
 		self::record( $token, $url );
 	}
 
@@ -123,25 +125,27 @@ class MS_Tracking {
 
 		$row   = MS_DB::get_delivery_by_token( $token );
 		$table = MS_DB::deliveries();
+		$mail_type = 'sequence';
 		if ( ! $row ) {
 			$row   = MS_DB::get_broadcast_recipient_by_token( $token );
 			$table = MS_DB::broadcast_recipients();
+			$mail_type = 'broadcast';
 		}
 		if ( ! $row ) {
 			return;
 		}
 
 		$now    = current_time( 'mysql' );
-		$update = array();
 		if ( null === $row->opened_at ) {
-			$update['opened_at'] = $now;
+			$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET opened_at = %s WHERE id = %d AND opened_at IS NULL", $now, $row->id ) );
 		}
 		if ( null !== $url && null === $row->clicked_at ) {
-			$update['clicked_at']  = $now;
-			$update['clicked_url'] = esc_url_raw( substr( $url, 0, 500 ) );
+			$wpdb->query( $wpdb->prepare(
+				"UPDATE {$table} SET clicked_at = %s, clicked_url = %s WHERE id = %d AND clicked_at IS NULL",
+				$now, esc_url_raw( substr( $url, 0, 500 ) ), $row->id
+			) );
 		}
-		if ( $update ) {
-			$wpdb->update( $table, $update, array( 'id' => $row->id ) );
-		}
+		// クリックから架空の開封イベントは作らず、受け取った反応だけを残す。
+		MS_Activity::record_mail( $mail_type, $row->id, null === $url ? 'opened' : 'clicked', (string) $url );
 	}
 }

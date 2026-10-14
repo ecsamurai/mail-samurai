@@ -113,11 +113,18 @@ class MS_Admin {
 
 	public function page_subscribers() {
 		global $wpdb;
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( '権限がありません。' );
+		}
 
 		$view_id = isset( $_GET['view'] ) ? (int) $_GET['view'] : 0;
 		if ( $view_id ) {
 			$subscriber = MS_DB::get_subscriber( $view_id );
 			$timeline   = $subscriber ? self::subscriber_timeline( $view_id ) : array();
+			$activity_filter = isset( $_GET['activity_type'] ) && is_string( $_GET['activity_type'] ) ? sanitize_key( $_GET['activity_type'] ) : '';
+			if ( ! isset( MS_Activity::labels()[ $activity_filter ] ) ) $activity_filter = '';
+			$activity_page = isset( $_GET['activity_page'] ) ? max( 1, (int) $_GET['activity_page'] ) : 1;
+			$activity = $subscriber ? MS_Activity::page( $view_id, $activity_filter, $activity_page ) : array();
 			include MS_PLUGIN_DIR . 'admin/views/subscriber-detail.php';
 			return;
 		}
@@ -311,6 +318,8 @@ class MS_Admin {
 		update_option( 'ms_batch_size', max( 1, min( 500, (int) $_POST['ms_batch_size'] ) ) );
 		update_option( 'ms_track_open', empty( $_POST['ms_track_open'] ) ? 0 : 1 );
 		update_option( 'ms_track_click', empty( $_POST['ms_track_click'] ) ? 0 : 1 );
+		$retention = isset( $_POST['ms_activity_retention_days'] ) ? (int) $_POST['ms_activity_retention_days'] : 365;
+		update_option( 'ms_activity_retention_days', in_array( $retention, array( 0, 90, 180, 365 ), true ) ? $retention : 365 );
 		wp_safe_redirect( admin_url( 'admin.php?page=ms-settings&saved=1' ) );
 		exit;
 	}

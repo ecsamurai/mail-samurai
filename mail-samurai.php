@@ -3,7 +3,7 @@
  * Plugin Name: メール侍 (Mail Samurai)
  * Plugin URI: https://github.com/ecsamurai/mail-samurai
  * Description: 自前インフラで動くステップメール/メルマガ配信プラグイン。登録日起点の個別タイムライン配信・開封/クリックトラッキング・ファネルレポート搭載。送信経路はWP Mail SMTP等のSMTPプラグインに委譲します。
- * Version: 1.5.1
+ * Version: 1.6.0
  * Author: ecさむらい
  * Author URI: https://ecsamurai.com
  * Text Domain: mail-samurai
@@ -14,11 +14,12 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MS_VERSION', '1.5.1' );
+define( 'MS_VERSION', '1.6.0' );
 define( 'MS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once MS_PLUGIN_DIR . 'includes/class-db.php';
+require_once MS_PLUGIN_DIR . 'includes/class-activity.php';
 require_once MS_PLUGIN_DIR . 'includes/class-activator.php';
 require_once MS_PLUGIN_DIR . 'includes/class-subscriber.php';
 require_once MS_PLUGIN_DIR . 'includes/class-sequence.php';
@@ -48,3 +49,4 @@ register_deactivation_hook( __FILE__, array( 'MS_Activator', 'deactivate' ) );
 new MS_Scheduler();
 new MS_Form();
 new MS_Endpoints();
+add_action( 'ms_cleanup_activities', array( 'MS_Activity', 'cleanup' ) );

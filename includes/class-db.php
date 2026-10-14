@@ -7,6 +7,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 class MS_DB {
 
+	public static function activities() {
+		global $wpdb;
+		return $wpdb->prefix . 'ms_activities';
+	}
+
 	public static function subscribers() {
 		global $wpdb;
 		return $wpdb->prefix . 'ms_subscribers';

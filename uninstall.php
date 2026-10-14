@@ -8,6 +8,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) exit;
 global $wpdb;
 
 $tables = array(
+	$wpdb->prefix . 'ms_activities',
 	$wpdb->prefix . 'ms_deliveries',
 	$wpdb->prefix . 'ms_steps',
 	$wpdb->prefix . 'ms_subscribers',
@@ -23,8 +24,10 @@ $options = array( 'ms_from_name', 'ms_from_email', 'ms_batch_size', 'ms_track_op
 foreach ( $options as $opt ) {
 	delete_option( $opt );
 }
+delete_option( 'ms_activity_retention_days' );
 
 delete_metadata( 'user', 0, 'ms_broadcast_draft', '', true );
 delete_metadata( 'user', 0, 'ms_test_email', '', true );
 
 wp_clear_scheduled_hook( 'ms_process_queue' );
+wp_clear_scheduled_hook( 'ms_cleanup_activities' );

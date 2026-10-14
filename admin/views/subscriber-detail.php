@@ -14,6 +14,10 @@
 		/ 登録: <?php echo esc_html( mysql2date( 'Y/n/j H:i', $subscriber->created_at ) ); ?>
 	</p>
 
+	<?php include MS_PLUGIN_DIR . 'admin/views/subscriber-activity.php'; ?>
+
+	<h2>配信記録・初回反応</h2>
+	<p class="ms-muted">更新前からの記録も表示します。開封・クリック欄はメールごとの最初の反応です。クリック時に初回開封が補完される場合があります。下の解除日時だけでは、本人の解除と管理者の停止を区別できません。</p>
 	<table class="widefat striped ms-table">
 		<thead><tr><th>日時</th><th>通</th><th>件名</th><th>状態</th><th>開封</th><th>クリック</th></tr></thead>
 		<tbody>

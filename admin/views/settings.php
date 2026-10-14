@@ -72,6 +72,17 @@ $cron_ago  = $last_cron ? human_time_diff( $last_cron, time() ) . '前' : 'ま�
 					<label><input type="checkbox" name="ms_track_click" value="1" <?php checked( get_option( 'ms_track_click', 1 ), 1 ); ?>> クリックトラッキング(リンク書き換え)</label>
 				</td>
 			</tr>
+			<tr>
+				<th><label for="ms_activity_retention_days">行動履歴の保存期間</label></th>
+				<td>
+					<select id="ms_activity_retention_days" name="ms_activity_retention_days">
+						<?php foreach ( array( 90 => '90日', 180 => '180日', 365 => '365日', 0 => '無期限' ) as $days => $label ) : ?>
+							<option value="<?php echo (int) $days; ?>" <?php selected( (int) get_option( 'ms_activity_retention_days', 365 ), $days ); ?>><?php echo esc_html( $label ); ?></option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description">期間を過ぎた行動履歴は定期処理で順次削除します。従来の配信記録・初回反応・集計は残ります。期間を短くすると、削除済みの履歴は戻せません。</p>
+				</td>
+			</tr>
 		</table>
 
 		<p><button class="button button-primary button-large">設定を保存</button></p>
