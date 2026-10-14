@@ -47,16 +47,17 @@ WordPress標準のWP-Cronはサイトへのアクセスがないと動きませ�
 
 **本プラグインにはバウンスの自動検知・自動配信停止の機能はありません。** 以下の運用を前提としています。
 
-- 想定リスト規模:**〜200件程度**(自分のLPから登録された、素性の分かるリスト)
+- 想定リスト規模:**購読者数の上限はありません**。バウンスを手動で処理する前提のため、**数百件程度までが無理なく運用できる目安**です(自分のLPから登録された、素性の分かるリスト)
+- 1時間あたりの送信数は、設定画面のバッチサイズと、サーバー・送信サービスの送信上限で決まります
 - サーバーの受信箱に戻るエラーメール(Mail Delivery Failed 等)を定期的に確認し、該当アドレスを購読者一覧から手動で配信停止してください
 - 送信ドメインに **SPF / DKIM / DMARC** を必ず設定してください(未設定だとGmail宛はほぼ届きません)
-- リストが数百件を超えたら、バウンス自動処理を備えた MailPoet 等への移行を推奨します
+- リストが大きくなり、手動でのバウンス処理が負担になってきたら、バウンス自動処理を備えた MailPoet 等への移行、またはアドオン Bounce Guard(準備中)の併用を検討してください
 
 ## MailPoetとの住み分け
 
 | | メール侍 | MailPoet |
 |---|---|---|
-| 向いている規模 | 〜200件の小規模リスト | 数百件〜 |
+| 向いている規模 | 小〜中規模(上限なし。数百件程度までは手動のバウンス処理で無理なく運用可) | 大規模リスト |
 | ステップメール | 特化(登録日起点+時刻丸め) | 可能(設定はやや複雑) |
 | バウンス自動処理 | なし(手動運用) | あり(MSS利用時) |
 | 管理画面 | 日本語 | 英語ベース |
@@ -92,7 +93,7 @@ GPLv2 or later
 
 **Mail Samurai** is a lightweight, self-hosted drip email (autoresponder) plugin for WordPress with a Japanese-language admin UI. Each subscriber gets their own timeline starting from their signup date (e.g., immediately → Day 1 → Day 3 at 8:00 AM), with send-hour rounding to avoid middle-of-the-night delivery. It includes open/click tracking (HMAC-signed redirects), a signup form shortcode with honeypot spam protection, and automatic sender-info/unsubscribe footers designed for Japanese anti-spam law compliance. Sending is delegated to your SMTP plugin (e.g., WP Mail SMTP) via `wp_mail()`.
 
-**Important limitation:** there is no automatic bounce handling. This plugin targets small lists (~200 subscribers) where bounced addresses can be removed manually; configure SPF/DKIM/DMARC on your sending domain, and migrate to a service with bounce processing (e.g., MailPoet) as your list grows.
+**Important limitation:** there is no automatic bounce handling. There is no hard limit on list size, but because bounced addresses are removed manually, it is most comfortable for small to mid-sized lists (up to a few hundred subscribers); configure SPF/DKIM/DMARC on your sending domain, and migrate to a service with bounce processing (e.g., MailPoet) as your list grows.
 
 License: GPLv2 or later.
 
