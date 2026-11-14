@@ -25,7 +25,7 @@ class MS_Broadcast {
 			'sequence_id' => $sequence_id,
 			'subject'     => $subject,
 			'body_html'   => wp_kses_post( $body_html ),
-			'status'      => 'queued',
+			'status'      => 'building',
 			'created_at'  => current_time( 'mysql' ),
 		) );
 		if ( ! $ok ) {
@@ -38,18 +38,25 @@ class MS_Broadcast {
 			$sequence_id
 		) );
 
-		foreach ( $subscribers as $subscriber_id ) {
-			$wpdb->query( $wpdb->prepare(
-				'INSERT IGNORE INTO ' . MS_DB::broadcast_recipients() . ' (broadcast_id, subscriber_id, track_token, status) VALUES (%d, %d, %s, %s)',
-				$broadcast_id, (int) $subscriber_id, MS_DB::token(), 'pending'
-			) );
+		if ( ! is_array( $subscribers ) || $wpdb->last_error ) {
+			$wpdb->update( MS_DB::broadcasts(), array( 'status' => 'failed' ), array( 'id' => $broadcast_id ) );
+			return new WP_Error( 'db_error', '宛先の取得に失敗しました。配信は開始していません。' );
 		}
-
-		if ( empty( $subscribers ) ) {
-			$wpdb->update( MS_DB::broadcasts(), array(
-				'status'       => 'completed',
-				'completed_at' => current_time( 'mysql' ),
-			), array( 'id' => $broadcast_id ) );
+		foreach ( $subscribers as $subscriber_id ) {
+			$inserted = $wpdb->insert( MS_DB::broadcast_recipients(), array(
+				'broadcast_id' => $broadcast_id, 'subscriber_id' => (int) $subscriber_id,
+				'track_token' => MS_DB::token(), 'status' => 'pending',
+			) );
+			if ( false === $inserted ) {
+				$wpdb->update( MS_DB::broadcasts(), array( 'status' => 'failed' ), array( 'id' => $broadcast_id ) );
+				return new WP_Error( 'db_error', '宛先の作成に失敗しました。配信は開始していません。' );
+			}
+		}
+		// Publish only after every recipient exists. Cron ignores building/failed batches.
+		$update = array( 'status' => $subscribers ? 'queued' : 'completed' );
+		if ( ! $subscribers ) $update['completed_at'] = current_time( 'mysql' );
+		if ( 1 !== $wpdb->update( MS_DB::broadcasts(), $update, array( 'id' => $broadcast_id, 'status' => 'building' ) ) ) {
+			return new WP_Error( 'db_error', '配信予約の確定に失敗しました。管理画面で状態を確認してください。' );
 		}
 
 		return array( 'id' => $broadcast_id, 'recipients' => count( $subscribers ) );

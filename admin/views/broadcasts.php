@@ -77,7 +77,7 @@
 				<td><?php echo esc_html( mysql2date( 'Y/n/j H:i', $broadcast->created_at ) ); ?></td>
 				<td><?php echo $sequence ? esc_html( $sequence->name ) : '削除済み'; ?></td>
 				<td><?php echo esc_html( $broadcast->subject ); ?></td>
-				<td><?php echo 'completed' === $broadcast->status ? '完了' : '送信待ち'; ?></td>
+				<td><?php echo esc_html( array( 'completed' => '完了', 'queued' => '送信待ち', 'building' => '宛先準備中（長時間続く場合は要確認）', 'failed' => '準備失敗（未送信）' )[ $broadcast->status ] ?? '要確認' ); ?></td>
 				<td><?php echo (int) $broadcast->sent; ?> / <?php echo (int) $broadcast->recipients; ?> 通<?php echo $broadcast->failed ? ' (失敗 ' . (int) $broadcast->failed . ')' : ''; ?></td>
 				<td><?php echo null === $open_rate ? '—' : esc_html( $open_rate ) . '%'; ?></td>
 				<td><?php echo null === $click_rate ? '—' : esc_html( $click_rate ) . '%'; ?></td>
